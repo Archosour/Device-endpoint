@@ -122,13 +122,16 @@ class Redis_device_update {
 }
 
 async function Set_gateway_info(Gateway, Client, Element) {
-    const deviceKey   = `Device:${Client.Identifier}`;
-    const Gateway_id = Gateway.Identifier;
-    const Gateway_object = Element.Object;
+    const deviceKey        = `Device:${Client.Identifier}`;
+    const Gateway_id       = Gateway.Identifier;
+    const Gateway_object   = Element.Object;
     const Gateway_resource = Element.Resource;
     const Gateway_instance = Element.Instance;
 
-    const exists      = await client.exists(deviceKey);
+    // currently only serial devices as gateway
+    if (Gateway_object != "Serial" && Gateway_resource != "Set_RX_message") return;
+
+    const exists = await client.exists(deviceKey);
 
     if (!exists) {
         await client.hSet(deviceKey, {
