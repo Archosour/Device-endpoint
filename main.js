@@ -112,40 +112,31 @@ app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
 
-class Redis_device_update {
-    Identifier = undefined;
-    Incomming_data = undefined;
-
-    constructor(Incomming_data = undefined) {
-        this.Incomming_data = Incomming_data;
-    }
-}
-
 async function Set_gateway_info(Gateway, Client, Element) {
-    const deviceKey        = `Device:${Client.Identifier}`;
-    const Gateway_id       = Gateway.Identifier;
-    const Gateway_object   = Element.Object;
-    const Gateway_resource = Element.Resource;
-    const Gateway_instance = Element.Instance;
+    // currently only serial devices behind gateways
+    if (Element.Object !== "Serial" || Element.Resource !== "Set_RX_message") {
+        return;
+    }
 
-    // currently only serial devices as gateway
-    if (Gateway_object != "Serial" && Gateway_resource != "Set_RX_message") return;
+    const deviceKey = `Device:${Client.Identifier}`;
+
+    const baseFields = {
+        Protocol:       Protocols.IPSO_v1,
+        Identifier:     Client.Identifier,
+        Last_activity:  Date.now(),
+        First_activity: Date.now()
+    };
+
+    const gatewayFields = {
+        Gateway_id:       Gateway.Identifier,
+        Gateway_object:   Element.Object,
+        Gateway_resource: Element.Resource,
+        Gateway_instance: Element.Instance
+    };
 
     const exists = await client.exists(deviceKey);
 
-    if (!exists) {
-        await client.hSet(deviceKey, {
-        Protocol:       Protocols.IPSO_v1,
-        Identifier:     Incomming_data.Identifier,
-        Last_activity:  Date.now(),
-        First_activity: Date.now()
-        });
-    } else {
-        await client.hSet(deviceKey, 'Gateway_id', Gateway_id);
-        await client.hSet(deviceKey, 'Gateway_object', Gateway_object);
-        await client.hSet(deviceKey, 'Gateway_resource', Gateway_resource);
-        await client.hSet(deviceKey, 'Gateway_instance', Gateway_instance);
-    }
+    await client.hSet(deviceKey, exists ? gatewayFields : baseFields);
 }
 
 async function Handle_sensor_data(Incomming_data = new Incomming_Data()) {
