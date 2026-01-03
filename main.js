@@ -65,8 +65,6 @@ function Set_device_properties(data, element) {
 }
 
 async function Process_incomming_message(Smart_data) {
-    //console.log("Smart data incomming: ", Smart_data, "Already objects: ", Object.keys(Smart_data.Data_parsed).length)
-
     if (Smart_data.Data_raw.startsWith('{') || Object.keys(Smart_data.Data_parsed).length != 0) {
         try {
             if (Object.keys(Smart_data.Data_parsed).length == 0) {
@@ -84,21 +82,17 @@ async function Process_incomming_message(Smart_data) {
                         Inner_smart_data.Timestamp_recieved = Date.now();
                         Inner_smart_data.Data_raw = element.Value;
                         
+                        let Host_data = Inner_smart_data;
+                        Host_data.Identifier = Smart_data.Identifier;
 
                         try {
                             Inner_smart_data.Data_parsed = JSON.parse(element.Value);
                             Process_incomming_message(Inner_smart_data);
+                            Set_gateway_info(Smart_data, Inner_smart_data, element);
                         }
                         catch {
-                            let Host_data = Inner_smart_data;
-                            Host_data.Identifier = Smart_data.Identifier;
                             Handle_logging_data(Host_data);
                         }
-                        
-                        
-                        //console.log(Inner_smart_data.Data_parsed);
-
-                        
                     }
                 });
             }
@@ -124,6 +118,30 @@ class Redis_device_update {
 
     constructor(Incomming_data = undefined) {
         this.Incomming_data = Incomming_data;
+    }
+}
+
+async function Set_gateway_info(Gateway, Client, Element) {
+    const deviceKey   = `Device:${Client.Identifier}`;
+    const Gateway_id = Gateway.Identifier;
+    const Gateway_object = Element.Object;
+    const Gateway_resource = Element.Resource;
+    const Gateway_instance = Element.Instance;
+
+    const exists      = await client.exists(deviceKey);
+
+    if (!exists) {
+        await client.hSet(deviceKey, {
+        Protocol:       Protocols.IPSO_v1,
+        Identifier:     Incomming_data.Identifier,
+        Last_activity:  Date.now(),
+        First_activity: Date.now()
+        });
+    } else {
+        await client.hSet(deviceKey, 'Gateway_id', Gateway_id);
+        await client.hSet(deviceKey, 'Gateway_object', Gateway_object);
+        await client.hSet(deviceKey, 'Gateway_resource', Gateway_resource);
+        await client.hSet(deviceKey, 'Gateway_instance', Gateway_instance);
     }
 }
 
