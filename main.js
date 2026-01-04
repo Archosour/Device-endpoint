@@ -140,15 +140,15 @@ async function handleSerialMessage(parentData, element) {
 }
 
 function logEnter(data) {
-    console.log(
-        `[ENTER] ${data.Identifier ?? "unknown"} | ${Date.now()}`
-    );
+//    console.log(
+//        `[ENTER] ${data.Identifier ?? "unknown"} | ${Date.now()}`
+//    );
 }
 
 function logExit(data) {
-    console.log(
-        `[EXIT] ${data.Identifier ?? "unknown"} | ${Date.now()}`
-    );
+//    console.log(
+//        `[EXIT] ${data.Identifier ?? "unknown"} | ${Date.now()}`
+//    );
 }
 
 function isSerialRX(element) {
