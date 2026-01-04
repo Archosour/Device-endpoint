@@ -64,74 +64,92 @@ function Set_device_properties(data, element) {
     return Smart_data;
 }
 
-let callDepth = 0;
+async function Process_incomming_message(data) {
+    logEnter(data);
 
-async function Process_incomming_message(Smart_data) {
-    const depth = callDepth++;
-    const trace = `${Smart_data.Identifier ?? "unknown"}|depth:${depth}`;
+    try {
+        parseMessage(data);
 
-    console.log(`[ENTER] ${trace}`);
-    console.log("Raw:", Smart_data.Data_raw);
+        switch (data.Data_parsed.Protocol) {
+            case Protocols.IPSO_v1:
+                await handleIPSO(data);
+                break;
 
-    if (!Smart_data.Data_raw) {
-        console.warn("Empty raw data");
-        return;
-    }
-
-    if (!Smart_data.Data_parsed || Object.keys(Smart_data.Data_parsed).length === 0) {
-        try {
-            Smart_data.Data_parsed = JSON.parse(Smart_data.Data_raw);
-        } catch (e) {
-            console.warn("Invalid JSON:", Smart_data.Data_raw);
-            return;
-        }
-    }
-
-    if (Smart_data.Data_raw.startsWith('{') || Object.keys(Smart_data.Data_parsed).length != 0) {
-        try {
-            if (Object.keys(Smart_data.Data_parsed).length == 0) {
-                Smart_data.Data_parsed = JSON.parse(Smart_data.Data_raw);
-            }
-            
-            if (Smart_data.Data_parsed.Protocol == Protocols.IPSO_v1) {
-                Smart_data.Protocol = Protocols.IPSO_v1;
-
-                Smart_data.Data_parsed.Data.forEach(element => {
-                    Smart_data = Set_device_properties(Smart_data, element);
-
-                    if (element.Object == 'Serial' && element.Resource == 'Set_RX_message') {
-                        let Inner_smart_data = new Incomming_Data();
-                        Inner_smart_data.Timestamp_recieved = Date.now();
-                        Inner_smart_data.Data_raw = element.Value;
-                        
-                        let Host_data = Inner_smart_data;
-                        Host_data.Identifier = Smart_data.Identifier;
-
-                        try {
-                            Inner_smart_data.Data_parsed = JSON.parse(element.Value);
-                            Process_incomming_message(Inner_smart_data);
-                            Set_gateway_info(Smart_data, Inner_smart_data, element);
-                        }
-                        catch {
-                            Handle_logging_data(Host_data);
-                        }
-                    }
-                });
-            }
-        }
-        catch (ex) {
-            console.error(`[ERROR] ${trace}`, ex);
-        } finally {
-            console.log(`[EXIT] ${trace}`);
-            callDepth--;
+            default:
+                console.warn("Unknown protocol:", data.Data_parsed.Protocol);
         }
 
-        await Handle_sensor_data(Smart_data);
+        await Handle_sensor_data(data);
+
+    } catch (err) {
+        console.error("Process_incomming_message failed:", err, data);
     }
-    else {
-        console.log(Smart_data.Data_raw);
+
+    logExit(data);
+}
+
+function parseMessage(data) {
+    if (!data.Data_raw || typeof data.Data_raw !== "string") {
+        throw new Error("Data_raw missing or invalid");
+    }
+
+    if (!data.Data_parsed || Object.keys(data.Data_parsed).length === 0) {
+        data.Data_parsed = JSON.parse(data.Data_raw);
+    }
+
+    if (!data.Data_parsed.Protocol) {
+        throw new Error("Protocol missing");
     }
 }
+
+async function handleIPSO(data) {
+    data.Protocol = Protocols.IPSO_v1;
+
+    for (const element of data.Data_parsed.Data ?? []) {
+        Set_device_properties(data, element);
+
+        if (isSerialRX(element)) {
+            await handleSerialMessage(data, element);
+        }
+    }
+}
+
+async function handleSerialMessage(parentData, element) {
+    const child = new Incomming_Data();
+    child.Timestamp_recieved = Date.now();
+    child.Data_raw = element.Value;
+    child.Identifier = parentData.Identifier;
+
+    try {
+        child.Data_parsed = JSON.parse(element.Value);
+
+        await Process_incomming_message(child);
+        await Set_gateway_info(parentData, child, element);
+
+    } catch {
+        await Handle_logging_data(child);
+    }
+}
+
+function logEnter(data) {
+    console.log(
+        `[ENTER] ${data.Identifier ?? "unknown"} | ${Date.now()}`
+    );
+}
+
+function logExit(data) {
+    console.log(
+        `[EXIT] ${data.Identifier ?? "unknown"} | ${Date.now()}`
+    );
+}
+
+function isSerialRX(element) {
+    return (
+        element.Object === "Serial" &&
+        element.Resource === "Set_RX_message"
+    );
+}
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
