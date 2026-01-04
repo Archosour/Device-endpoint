@@ -121,8 +121,16 @@ async function handleSerialMessage(parentData, element) {
     child.Identifier = parentData.Identifier;
 
     try {
-        child.Data_parsed = JSON.parse(element.Value);
-
+        if (typeof element == "object") {
+            child.Data_parsed = element.Value;
+            child.Data_raw = JSON.stringify(element.Value);
+        }
+        else 
+        {
+            child.Data_parsed = JSON.parse(element.Value);
+            child.Data_raw = element.Value;
+        }
+        
         await Process_incomming_message(child);
         await Set_gateway_info(parentData, child, element);
 
