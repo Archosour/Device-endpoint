@@ -64,7 +64,29 @@ function Set_device_properties(data, element) {
     return Smart_data;
 }
 
+let callDepth = 0;
+
 async function Process_incomming_message(Smart_data) {
+    const depth = callDepth++;
+    const trace = `${Smart_data.Identifier ?? "unknown"}|depth:${depth}`;
+
+    console.log(`[ENTER] ${trace}`);
+    console.log("Raw:", Smart_data.Data_raw);
+
+    if (!Smart_data.Data_raw) {
+        console.warn("Empty raw data");
+        return;
+    }
+
+    if (!Smart_data.Data_parsed || Object.keys(Smart_data.Data_parsed).length === 0) {
+        try {
+            Smart_data.Data_parsed = JSON.parse(Smart_data.Data_raw);
+        } catch (e) {
+            console.warn("Invalid JSON:", Smart_data.Data_raw);
+            return;
+        }
+    }
+
     if (Smart_data.Data_raw.startsWith('{') || Object.keys(Smart_data.Data_parsed).length != 0) {
         try {
             if (Object.keys(Smart_data.Data_parsed).length == 0) {
@@ -98,7 +120,10 @@ async function Process_incomming_message(Smart_data) {
             }
         }
         catch (ex) {
-            console.log(ex);
+            console.error(`[ERROR] ${trace}`, ex);
+        } finally {
+            console.log(`[EXIT] ${trace}`);
+            callDepth--;
         }
 
         await Handle_sensor_data(Smart_data);
@@ -111,6 +136,13 @@ async function Process_incomming_message(Smart_data) {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
 })
+
+function redisValue(value) {
+    if (value === undefined || value === null) return "";
+    if (typeof value === "object") return JSON.stringify(value);
+    return value;
+}
+
 
 async function Set_gateway_info(Gateway, Client, Element) {
     // currently only serial devices behind gateways
@@ -154,33 +186,33 @@ async function Handle_sensor_data(Incomming_data = new Incomming_Data()) {
         First_activity: Date.now()
         });
     } else {
-        if (Incomming_data.Device.IPv4 != undefined) await client.hSet(deviceKey, 'IPv4', Incomming_data.Device.IPv4);
-        if (Incomming_data.Device.MAC)               await client.hSet(deviceKey, 'MAC', Incomming_data.Device.MAC);
-        if (Incomming_data.Device.Listen_port)       await client.hSet(deviceKey, 'Listen_port', Incomming_data.Device.Listen_port);
-        if (Incomming_data.Device.Send_server)       await client.hSet(deviceKey, 'Send_server', Incomming_data.Device.Send_server);
-        if (Incomming_data.Device.Current_uptime)    await client.hSet(deviceKey, 'Uptime', Incomming_data.Device.Current_uptime);
+        if (Incomming_data.Device.IPv4 != undefined) await client.hSet(deviceKey, 'IPv4', redisValue(Incomming_data.Device.IPv4));
+        if (Incomming_data.Device.MAC)               await client.hSet(deviceKey, 'MAC', redisValue(Incomming_data.Device.MAC));
+        if (Incomming_data.Device.Listen_port)       await client.hSet(deviceKey, 'Listen_port', redisValue(Incomming_data.Device.Listen_port));
+        if (Incomming_data.Device.Send_server)       await client.hSet(deviceKey, 'Send_server', redisValue(Incomming_data.Device.Send_server));
+        if (Incomming_data.Device.Current_uptime)    await client.hSet(deviceKey, 'Uptime', redisValue(Incomming_data.Device.Current_uptime));
                                                      await client.hSet(deviceKey, 'Last_activity', Date.now());
                                                      await client.hSet(deviceKey, 'Last_activity_hr', new Date().toISOString());
 
         if (Incomming_data.Data_parsed.Data != undefined) {
             Incomming_data.Data_parsed.Data.forEach(async element => {
                 if (element.Object == "Digital" && element.Resource == "Get_io_enabled") {
-                    await client.hSet(ioKey, "Digital_" + element.Instance, element.Value);
+                    await client.hSet(ioKey, "Digital_" + element.Instance, redisValue(element.Value));
                 }
 
                 if (element.Object == "Analog" && element.Resource == "Get_ADC") {
-                    await client.hSet(ioKey, "Analog_" + element.Instance, element.Value);
+                    await client.hSet(ioKey, "Analog_" + element.Instance, redisValue(element.Value));
                 }
 
                 if (element.Object == "Timer") {
-                    if (element.Resource == "Get_io_update")      await client.hSet(timerKey, "IO_update_" + element.Instance, element.Value);
-                    if (element.Resource == "Get_message_update") await client.hSet(timerKey, "Message_update_" + element.Instance, element.Value);
+                    if (element.Resource == "Get_io_update")      await client.hSet(timerKey, "IO_update_" + element.Instance, redisValue(element.Value));
+                    if (element.Resource == "Get_message_update") await client.hSet(timerKey, "Message_update_" + element.Instance, redisValue(element.Value));
                 }
             })
         }
     }
 
-  await client.rPush(messagesKey, Incomming_data.Data_raw);
+  await client.rPush(messagesKey, redisValue(Incomming_data.Data_raw));
 }
 
 async function Handle_logging_data(Incomming_data = new Incomming_Data()) {
@@ -200,7 +232,7 @@ async function Handle_logging_data(Incomming_data = new Incomming_Data()) {
         await client.hSet(deviceKey, 'Last_activity_hr', new Date().toISOString());
     }
 
-    await client.rPush(loggingKey, Incomming_data.Data_raw);
+    await client.rPush(loggingKey, redisValue(Incomming_data.Data_raw));
 }
 
 class Incomming_Data {
