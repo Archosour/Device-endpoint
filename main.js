@@ -38,7 +38,7 @@ function Set_device_properties(data, element) {
 
     if (element.Object == 'Device' && element.Resource == 'Get_identifier') {
         Smart_data.Identifier = element.Value;
-        console.log(Date.now().toLocaleString(), ": ", element.Value, " Objects: ", Smart_data.Data_parsed.Data.length);
+        console.log(new Date(Date.now()).toLocaleString("en-GB"), ": ", element.Value, " Objects: ", Smart_data.Data_parsed.Data.length);
     }
 
     if (element.Object == 'MCU' && element.Resource == 'Get_uptime') {
