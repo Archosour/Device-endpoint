@@ -47,25 +47,11 @@ function Set_device_properties(data, element) {
         }
     }
 
-    if (element.Object == 'MCU' && element.Resource == 'Get_uptime') {
-        Smart_data.Device.Current_uptime = element.Value;
-    }
-
-    if (element.Object == 'Modem' && element.Resource == 'Get_IP_address') {
-        Smart_data.Device.IPv4 = element.Value;
-    }
-
-    if (element.Object == 'Modem' && element.Resource == 'Get_mac_address') {
-        Smart_data.Device.MAC = element.Value;
-    }
-
-    if (element.Object == 'Modem' && element.Resource == 'Get_listen_port') {
-        Smart_data.Device.Listen_port = element.Value;
-    }
-
-    if (element.Object == 'Modem' && element.Resource == 'Get_server_address') {
-        Smart_data.Device.Send_server = element.Value;
-    }
+    if (element.Object == 'MCU'   && element.Resource == 'Get_uptime')         Smart_data.Device.Current_uptime = element.Value;
+    if (element.Object == 'Modem' && element.Resource == 'Get_IP_address')     Smart_data.Device.IPv4 = element.Value;
+    if (element.Object == 'Modem' && element.Resource == 'Get_mac_address')    Smart_data.Device.MAC = element.Value;
+    if (element.Object == 'Modem' && element.Resource == 'Get_listen_port')    Smart_data.Device.Listen_port = element.Value;
+    if (element.Object == 'Modem' && element.Resource == 'Get_server_address') Smart_data.Device.Send_server = element.Value;
 
     return Smart_data;
 }
