@@ -45,7 +45,6 @@ function Set_device_properties(data, element) {
         catch {
             // no code here
         }
-        
     }
 
     if (element.Object == 'MCU' && element.Resource == 'Get_uptime') {
@@ -72,8 +71,6 @@ function Set_device_properties(data, element) {
 }
 
 async function Process_incomming_message(data) {
-    logEnter(data);
-
     try {
         parseMessage(data);
 
@@ -91,8 +88,6 @@ async function Process_incomming_message(data) {
     } catch (err) {
         console.error("Process_incomming_message failed:", err, data);
     }
-
-    logExit(data);
 }
 
 function parseMessage(data) {
@@ -146,18 +141,6 @@ async function handleSerialMessage(parentData, element) {
     }
 }
 
-function logEnter(data) {
-//    console.log(
-//        `[ENTER] ${data.Identifier ?? "unknown"} | ${Date.now()}`
-//    );
-}
-
-function logExit(data) {
-//    console.log(
-//        `[EXIT] ${data.Identifier ?? "unknown"} | ${Date.now()}`
-//    );
-}
-
 function isSerialRX(element) {
     return (
         element.Object === "Serial" &&
@@ -175,7 +158,6 @@ function redisValue(value) {
     if (typeof value === "object") return JSON.stringify(value);
     return value;
 }
-
 
 async function Set_gateway_info(Gateway, Client, Element) {
     // currently only serial devices behind gateways
