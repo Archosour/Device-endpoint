@@ -135,8 +135,8 @@ function isSerialRX(element) {
 }
 
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+app.listen(local_setting.Request_port, () => {
+  console.log(`Example app listening on port ${local_setting.Request_port}`)
 })
 
 function redisValue(value) {
