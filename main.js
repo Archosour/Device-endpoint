@@ -1,6 +1,7 @@
 const express = require('express')
 const local_setting = require("./Local_settings.json");
 const app = express()
+const Convert_ipso = require('./Convert_IPSO.js');
 const port = local_setting.Request_port;
 
 const redis = require('redis');
@@ -62,6 +63,7 @@ async function Process_incomming_message(data) {
 
         switch (data.Data_parsed.Protocol) {
             case Protocols.IPSO_v1:
+            case Protocols.IPSO_Lite_v1:
                 await handleIPSO(data);
                 break;
 
@@ -83,6 +85,10 @@ function parseMessage(data) {
 
     if (!data.Data_parsed || Object.keys(data.Data_parsed).length === 0) {
         data.Data_parsed = JSON.parse(data.Data_raw);
+    }
+
+    if (data.Data_parsed.p != undefined) {
+        data.Data_parsed = Convert_ipso.Lite_to_normal(data.Data_parsed);
     }
 
     if (!data.Data_parsed.Protocol) {
@@ -257,6 +263,7 @@ class Raw_Database {
 const Protocols = {
     Unknown: "Unknown",
     IPSO_v1: "IPSO_v1",
+    IPSO_Lite_v1: "IPSO-Lite_v1"
 }
 
 class Device {
